@@ -1,35 +1,40 @@
-# General packages
-from collections import deque
-import numpy as np
-# My packages
-from visualisation_with_pyqt import OpenBciGui
-# PyQt5
+# --General packages--
 from PyQt5.QtWidgets import QApplication
 import sys
-# Dark theme
-import qdarkstyle
-
 import atexit
-# Game
-from game.main import RunGame
+import serial
+# --My packages--
+from app.dispatcher import Dispatcher
+from main_window.mainwindow import MainWindow
+from pyqtgraph.dockarea.Dock import DockLabel
+from app.update_pyqtgraph_dock_tab import update_style_patched
 
 
 def main():
-    # Game
-    # run_game = RunGame()
-    # run_game.start()
-
+    # pg.setConfigOptions(antialias=True)  # Look at how much it change the performances
     # Start the multigraphes
+    DockLabel.updateStyle = update_style_patched
     app = QApplication(sys.argv)
-    # Apply dark theme
-    app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
+
+    N_CH = 8
+    DEQUE_LEN = 1250
+    gv = Dispatcher(N_CH=N_CH, DEQUE_LEN=DEQUE_LEN)                            # Create the global variable that will be
+                                                                               # in many of this project classes
     # Create the Gui
-    open_bci_gui = OpenBciGui()
-    open_bci_gui.create_gui()
+    openbci_gui = MainWindow(app, gv)
+    gv.openbci_gui = openbci_gui
 
     @atexit.register   # work only if click on x on the window
     def save_data_at_exit():
-        open_bci_gui.main_window.tab_1.write_to_file()
+        print('EXIT')
+        if gv.stream_origin == 'OpenBCI':
+            # serial.Serial(port='/dev/ttyUSB0').close()
+            print(gv.stream_source.board.ser.isopen())
+            gv.stream_source.board.disconnect()
+            # gv.stream_source.board.stop()  # application need to be closed with
+                                           # the x of the window
+        # print('saving')
+        # write_to_file(gv)
 
     # start the main tread that contains all the timers
     sys.exit(app.exec_())
